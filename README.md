@@ -49,6 +49,28 @@ export default class App extends React.Component {
 }
 ```
 
+## VideoPlayer Available Props
+
+| Name  | Required | Type | Information |
+| ----- | -------- | ---- | ----------- |
+| src | Yes | String | Relative path or URL for the video. |
+| type | Yes | String | MIME type of the video.
+| audioTracks | No | Array | Array of audio tracks.
+| playIcon | No | Element | Element to replace the default play button on the player.
+| pauseIcon | No | Element | Element to replace the default pause button on the player.
+| maximizeIcon | No | Element | Element to replace the default maximize button on the player.
+| minimizeIcon | No | Element | Element to replace the default minimize button on the player.
+| audioTracksIcon | No | Element | Element to replace the default audio tracks button on the player.
+
+## audioTracks Properties
+
+| Name  | Required | Type | Information |
+| ----- | -------- | ---- | ----------- |
+| label | Yes | String | Label of the track. |
+| src | Yes | String | Relative path or URL for the audio track. |
+| type | Yes | String | MIME type of the audio. |
+
+
 ## License
 
 Maestra Video Player is [MIT](https://github.com/batatop/maestra-video-player/blob/master/LICENSE) licensed.
