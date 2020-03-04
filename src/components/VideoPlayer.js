@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types'
 import videojs from 'video.js'
 import { playSVG, pauseSVG, maximizeSVG, minimizeSVG, headphonesSVG } from '../assets/svg'
 import VolumeControl from './VolumeControl';
@@ -7,7 +8,6 @@ import { lightColor } from '../assets/constants';
 import { getAudioOptions } from '../functions'
 
 const SEEK_SECONDS = 5
-const ORIGINAL_LABEL = 'Original'
 
 class VideoPlayer extends React.Component {
     constructor(props) {
@@ -21,7 +21,7 @@ class VideoPlayer extends React.Component {
             isControlsVisible: true,
             duration: 0,
             isMuted: false,
-            voiceoverLabel: ORIGINAL_LABEL,
+            voiceoverLabel: this.props.originalAudioTrackLabel,
             isAudioTrackMenuOpen: false
         }
 
@@ -30,7 +30,17 @@ class VideoPlayer extends React.Component {
 
     componentDidMount() {
         // initializePlayers
-        this.player = videojs(this.videoNode, this.props.videoJsOptions, () => {
+        const videoJsOptions = {
+            autoplay: false,
+            controls: false,
+            height: this.props.height,
+            sources: [{
+                src: this.props.src,
+                type: this.props.type
+            }]
+        }
+
+        this.player = videojs(this.videoNode, videoJsOptions, () => {
             this.player.volume(this.state.volume)
 
             this.player.on('play', this.handlePlay);
@@ -109,7 +119,7 @@ class VideoPlayer extends React.Component {
     }
 
     handlePlay = () => {
-        if(this.state.voiceoverLabel !== 'Original') {
+        if(this.state.voiceoverLabel !== this.props.originalAudioTrackLabel) {
             this.audioPlayer.play()
         }
 
@@ -151,7 +161,7 @@ class VideoPlayer extends React.Component {
                 volume = 1
             }
 
-            if(this.state.voiceoverLabel === 'Original') {
+            if(this.state.voiceoverLabel === this.props.originalAudioTrackLabel) {
                 this.player.volume(volume)
             }
             else {
@@ -245,14 +255,14 @@ class VideoPlayer extends React.Component {
             if(!isFound) {
                 // means it is original audio
                 this.setState((prevState) => {
-                    if(prevState.voiceoverLabel !== ORIGINAL_LABEL) {
+                    if(prevState.voiceoverLabel !== this.props.originalAudioTrackLabel) {
                         if(this.player && this.audioPlayer) {
                             this.player.volume(this.state.volume)
                             this.audioPlayer.volume(0)
                         }
 
                         return {
-                            voiceoverLabel: ORIGINAL_LABEL
+                            voiceoverLabel: this.props.originalAudioTrackLabel
                         }
                     }
                 })
@@ -282,19 +292,19 @@ class VideoPlayer extends React.Component {
 
     getFullscreenButton = () => {
         if (this.player && this.player.isFullscreen()) {
-            return minimizeSVG
+            return this.props.minimizeIcon
         }
         else {
-            return maximizeSVG
+            return this.props.maximizeIcon
         }
     }
 
     getPlayPauseButton = () => {
         if (this.state.isPlaying) {
-            return pauseSVG
+            return this.props.pauseIcon
         }
         else {
-            return playSVG
+            return this.props.playIcon
         }
     }
 
@@ -327,14 +337,14 @@ class VideoPlayer extends React.Component {
 
     seek = (time) => {
         this.player.currentTime(time)
-        if(this.state.voiceoverLabel !== ORIGINAL_LABEL) {
+        if(this.state.voiceoverLabel !== this.props.originalAudioTrackLabel) {
             this.audioPlayer.currentTime(time)
         }
     }
 
     setAudioTrack = (label) => {
         const audioTracks = (this.player && this.player.audioTracks() && this.player.audioTracks().tracks_) || []
-        if(label !== ORIGINAL_LABEL) {
+        if(label !== this.props.originalAudioTrackLabel) {
             for (let i = 0; i < audioTracks.length; i++) {
                 if (audioTracks[i].label === label) {
                     audioTracks[i].enabled = true
@@ -361,7 +371,7 @@ class VideoPlayer extends React.Component {
         let audioTracksList = null
         let audioTracksListItems = null
 
-        if (audioTracks) {
+        if (audioTracks && audioTracks.length > 0) {
             audioTracksListItems = Object.keys(audioTracks).map(key => {
                 const audioTrack = audioTracks[key]
                 if (audioTrack.label) {
@@ -398,23 +408,26 @@ class VideoPlayer extends React.Component {
                 >
                     <div
                         key={`audioListItem_Original`}
-                        onClick={() => (this.setAudioTrack(ORIGINAL_LABEL))}
+                        onClick={() => (this.setAudioTrack(this.props.originalAudioTrackLabel))}
                         style={{
                             ...styles.audioTrackItem, 
-                            backgroundColor: this.state.voiceoverLabel === ORIGINAL_LABEL ? 'rgba(70,80,93,0.4)' : 'transparent'
+                            backgroundColor: this.state.voiceoverLabel === this.props.originalAudioTrackLabel ? 'rgba(70,80,93,0.4)' : 'transparent'
                         }}
                     >
-                        {ORIGINAL_LABEL}
+                        {this.props.originalAudioTrackLabel}
                     </div>
                     {audioTracksListItems}
                 </div>
             )
         }
+        else {
+            return null
+        }
 
         return (
             <div onClick={this.toggleAudioTracksList} style={{ cursor: 'pointer', paddingLeft: 14, position: 'relative' }}>
                 <div onClick={this.toggleAudioTrackMenu}>
-                    {headphonesSVG}
+                    {this.props.audioTracksIcon}
                 </div>
                 {audioTracksList}
             </div>
@@ -539,6 +552,30 @@ const styles = {
         paddingRight: 14,
         color: lightColor,
     }
+}
+
+VideoPlayer.defaultProps = {
+    height: 300,
+    originalAudioTrackLabel: 'Original',
+    audioTracks: [],
+    playIcon: playSVG,
+    pauseIcon: pauseSVG,
+    maximizeIcon: maximizeSVG,
+    minimizeIcon: minimizeSVG,
+    audioTracksIcon: headphonesSVG
+}
+
+VideoPlayer.propTypes = {
+    src: PropTypes.string.isRequired,
+    type: PropTypes.string.isRequired,
+    height: PropTypes.number,
+    originalAudioTrackLabel: PropTypes.string,
+    audioTracks: PropTypes.array,
+    playIcon: PropTypes.element,
+    pauseIcon: PropTypes.element,
+    maximizeIcon: PropTypes.element,
+    minimizeIcon: PropTypes.element,
+    audioTracksIcon: PropTypes.element
 }
 
 export default VideoPlayer

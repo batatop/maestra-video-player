@@ -1,16 +1,6 @@
 import React from 'react';
 import VideoPlayer from './components/VideoPlayer';
 
-const videoJsOptions = {
-  autoplay: false,
-  controls: false,
-  height: 300,
-  sources: [{
-    src: '/assets/avengers.mp4',
-    type: 'video/mp4'
-  }]
-}
-
 const audioTracks = [
   {
     label: 'Arabic',
@@ -27,9 +17,19 @@ const audioTracks = [
 export default class App extends React.Component {
   render() {
     return (
-      <div>
+      <div
+        style={{
+          backgroundColor: '#565378',
+          height: '100vh',
+          width: '100vw',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
         <VideoPlayer
-          videoJsOptions={videoJsOptions}
+          src="/assets/avengers.mp4"
+          type="video/mp4"
           audioTracks={audioTracks}
         />
       </div>

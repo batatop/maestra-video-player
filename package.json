@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@videojs/http-streaming": "^1.12.2",
+    "prop-types": "^15.7.2",
     "react": "^16.13.0",
     "react-dom": "^16.13.0",
     "react-scripts": "^3.4.0",
