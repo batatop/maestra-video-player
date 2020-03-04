@@ -7,6 +7,7 @@ import { lightColor } from '../assets/constants';
 import { getAudioOptions } from '../functions'
 
 const SEEK_SECONDS = 5
+const ORIGINAL_LABEL = 'Original'
 
 class VideoPlayer extends React.Component {
     constructor(props) {
@@ -20,7 +21,8 @@ class VideoPlayer extends React.Component {
             isControlsVisible: true,
             duration: 0,
             isMuted: false,
-            voiceoverLabel: 'Original'
+            voiceoverLabel: ORIGINAL_LABEL,
+            isAudioTrackMenuOpen: false
         }
 
         this.hidePlayerTimeout = null
@@ -36,7 +38,6 @@ class VideoPlayer extends React.Component {
             this.player.on('timeupdate', this.handleTimeUpdate);
             this.player.on('fullscreenchange', this.handleFullscreenChange);
             this.player.on('loadedmetadata', this.handleLoadedMetadata);
-            this.player.on('volumechange', this.handleVolumeChange);
         });
 
         const emptyAudioOptions = getAudioOptions('empty')
@@ -66,7 +67,7 @@ class VideoPlayer extends React.Component {
             }
         }
 
-        // audio tracks event listener
+        // other event listeners
         this.player.audioTracks().on('change', this.handleAudioTrackChange)
     }
 
@@ -78,7 +79,6 @@ class VideoPlayer extends React.Component {
             this.player.off('timeupdate', this.handleTimeUpdate);
             this.player.off('fullscreenchange', this.handleFullscreenChange);
             this.player.off('loadedmetadata', this.handleLoadedMetadata);
-            this.player.off('volumechange', this.handleVolumeChange);
             this.audioPlayer.off('play', this.handleAudioPlay);
             this.player.audioTracks().off('change', this.handleAudioTrackChange)
 
@@ -91,11 +91,11 @@ class VideoPlayer extends React.Component {
         }
     }
 
-    handleVolumeChange = () => {
-        const volume = this.player.volume()
-        this.setState((prevProps) => {
-            if (prevProps.volume !== volume) {
-                return { volume }
+    handlePlayerClick = () => {
+        this.playPause()
+        this.setState(prevState => {
+            if(prevState.isAudioTrackMenuOpen) {
+                return { isAudioTrackMenuOpen: false }
             }
         })
     }
@@ -109,7 +109,10 @@ class VideoPlayer extends React.Component {
     }
 
     handlePlay = () => {
-        this.audioPlayer.play()
+        if(this.state.voiceoverLabel !== 'Original') {
+            this.audioPlayer.play()
+        }
+
         clearTimeout(this.hidePlayerTimeout)
         this.hidePlayerTimeout = setTimeout(this.hidePlayerControls, 2000)
 
@@ -139,17 +142,23 @@ class VideoPlayer extends React.Component {
     }
 
     setVolume = (percentage) => {
-        const volume = percentage && parseFloat(percentage) / 100
+        let volume = percentage && parseFloat(percentage) / 100
         if (volume === 0 || volume > 0) {
             if (volume < 0.05) {
-                this.player.volume(0)
+                volume = 0
             }
             else if (volume > 0.95) {
-                this.player.volume(1)
+                volume = 1
             }
-            else {
+
+            if(this.state.voiceoverLabel === 'Original') {
                 this.player.volume(volume)
             }
+            else {
+                this.audioPlayer.volume(volume)
+            }
+            
+            this.setState({ volume })
         }
     }
 
@@ -195,6 +204,10 @@ class VideoPlayer extends React.Component {
                     this.player.volume(0)
                 }
 
+                if(this.audioPlayer.volume() !== this.state.volume) {
+                    this.audioPlayer.volume(this.state.volume)
+                }
+
                 this.audioPlayer.currentTime(this.state.currentTime)
             }
         }
@@ -213,16 +226,36 @@ class VideoPlayer extends React.Component {
             for (let i = 0; i < audioTracks.length; i++) {
                 if (
                     !isFound && audioTracks[i].enabled &&
-                    this.props.audioTracks[i] && this.props.audioTracks[i].src && this.props.audioTracks[i].label
+                    this.props.audioTracks[i] && this.props.audioTracks[i].src
                 ) {
-                    this.audioPlayer.src(this.props.audioTracks[i].src)
-
-                    this.setState({
-                        voiceoverLabel: this.props.audioTracks[i].label
+                    this.setState((prevState) => {
+                        if(this.props.audioTracks[i].label !== prevState.voiceoverLabel) {
+                            this.audioPlayer.src(this.props.audioTracks[i].src)
+        
+                            return {
+                                voiceoverLabel: this.props.audioTracks[i].label
+                            }
+                        }
                     })
 
                     isFound = true
                 }
+            }
+
+            if(!isFound) {
+                // means it is original audio
+                this.setState((prevState) => {
+                    if(prevState.voiceoverLabel !== ORIGINAL_LABEL) {
+                        if(this.player && this.audioPlayer) {
+                            this.player.volume(this.state.volume)
+                            this.audioPlayer.volume(0)
+                        }
+
+                        return {
+                            voiceoverLabel: ORIGINAL_LABEL
+                        }
+                    }
+                })
             }
         }
     }
@@ -288,17 +321,39 @@ class VideoPlayer extends React.Component {
     percentageSeek = (percentage) => {
         if (this.player) {
             const newTime = (this.state.duration / 100) * percentage
-            this.player.currentTime(newTime)
+            this.seek(newTime)
+        }
+    }
+
+    seek = (time) => {
+        this.player.currentTime(time)
+        if(this.state.voiceoverLabel !== ORIGINAL_LABEL) {
+            this.audioPlayer.currentTime(time)
         }
     }
 
     setAudioTrack = (label) => {
         const audioTracks = (this.player && this.player.audioTracks() && this.player.audioTracks().tracks_) || []
-        for (let i = 0; i < audioTracks.length; i++) {
-            if (audioTracks[i].label === label) {
-                audioTracks[i].enabled = true
+        if(label !== ORIGINAL_LABEL) {
+            for (let i = 0; i < audioTracks.length; i++) {
+                if (audioTracks[i].label === label) {
+                    audioTracks[i].enabled = true
+                }
             }
         }
+        else {
+            for (let i = 0; i < audioTracks.length; i++) {
+                if (audioTracks[i].enabled) {
+                    audioTracks[i].enabled = false
+                }
+            }
+        }
+    }
+
+    toggleAudioTrackMenu = () => {
+        this.setState((prevState) => {
+            return { isAudioTrackMenuOpen: !prevState.isAudioTrackMenuOpen }
+        })
     }
 
     getAudioTracksButton = () => {
@@ -336,37 +391,37 @@ class VideoPlayer extends React.Component {
                         bottom: 30,
                         right: 0,
                         border: '2px solid rgba(70,80,93,0.4)',
+                        opacity: this.state.isAudioTrackMenuOpen ? 1 : 0,
+                        pointerEvents: this.state.isAudioTrackMenuOpen ? 'auto' : 'none',
+                        transition: 'opacity 0.1s ease-in',
                     }}
                 >
                     <div
                         key={`audioListItem_Original`}
-                        onClick={() => (this.setAudioTrack('Original'))}
+                        onClick={() => (this.setAudioTrack(ORIGINAL_LABEL))}
                         style={{
                             ...styles.audioTrackItem, 
-                            backgroundColor: this.state.voiceoverLabel === 'Original' ? 'rgba(70,80,93,0.4)' : 'transparent'
+                            backgroundColor: this.state.voiceoverLabel === ORIGINAL_LABEL ? 'rgba(70,80,93,0.4)' : 'transparent'
                         }}
                     >
-                        Original
+                        {ORIGINAL_LABEL}
                     </div>
                     {audioTracksListItems}
                 </div>
             )
         }
 
-
-        // if(this.props.audioTracks.length > 0) {
-
-        // }
-
         return (
             <div onClick={this.toggleAudioTracksList} style={{ cursor: 'pointer', paddingLeft: 14, position: 'relative' }}>
-                {headphonesSVG}
+                <div onClick={this.toggleAudioTrackMenu}>
+                    {headphonesSVG}
+                </div>
                 {audioTracksList}
             </div>
         )
     }
 
-    seek = (direction) => {
+    seekWithArrow = (direction) => {
         if(this.player) {
             let newTime = this.state.currentTime
             if(direction === 'forwards') {
@@ -384,18 +439,18 @@ class VideoPlayer extends React.Component {
                 newTime = this.state.duration
             }
 
-            this.player.currentTime(newTime)
+            this.seek(newTime)
         }
     }
 
     handleKeyDown = (e) => {
         if(e.keyCode === 37) {
             // seek backwards
-            this.seek('backwards')
+            this.seekWithArrow('backwards')
         }
         else if(e.keyCode === 39) {
             // seek forwards
-            this.seek('forwards')
+            this.seekWithArrow('forwards')
         }
         else if(e.keyCode === 77) {
             // mute
@@ -413,7 +468,12 @@ class VideoPlayer extends React.Component {
 
     render() {
         return (
-            <div onMouseMove={this.handlePlayerMouseMove} onClick={this.playPause} style={{ userSelect: 'none' }}>
+            <div
+                onMouseMove={this.handlePlayerMouseMove}
+                onClick={this.handlePlayerClick}
+                onDoubleClick={this.toggleFullscreen}
+                style={{ userSelect: 'none' }}
+            >
                 <div data-vjs-player style={{ position: 'relative' }} onKeyDown={this.handleKeyDown}>
                     <video ref={node => this.videoNode = node} autoPlay={false} className="video-js"></video>
 
@@ -424,6 +484,7 @@ class VideoPlayer extends React.Component {
                             ...styles.videoControls,
                             opacity: this.state.isControlsVisible ? 1 : 0,
                             pointerEvents: this.state.isControlsVisible ? 'auto' : 'none',
+                            transition: 'opacity 0.1s ease-in'
                         }}
                     >
                         {/* play/pause */}
@@ -432,9 +493,7 @@ class VideoPlayer extends React.Component {
                         </div>
 
                         {/* volume control */}
-                        <div style={{ paddingLeft: 14, paddingRight: 14 }}>
-                            <VolumeControl value={this.state.volume} onChange={this.setVolume} toggleMute={this.toggleMute} isMuted={this.state.isMuted} />
-                        </div>
+                        <VolumeControl value={this.state.volume} onChange={this.setVolume} toggleMute={this.toggleMute} isMuted={this.state.isMuted} />
 
                         <Slider value={this.state.currentTime} limit={this.state.duration} onChange={this.percentageSeek} />
 
@@ -479,7 +538,6 @@ const styles = {
         paddingLeft: 14,
         paddingRight: 14,
         color: lightColor,
-        transition: 'opacity 0.2s ease-in',
     }
 }
 
