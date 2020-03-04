@@ -2,8 +2,8 @@ import React from 'react';
 import PropTypes from 'prop-types'
 import videojs from 'video.js'
 import { playSVG, pauseSVG, maximizeSVG, minimizeSVG, headphonesSVG } from './assets/svg'
-import VolumeControl from './components/VolumeControl.jsx';
-import Slider from './components/Slider.jsx';
+import VolumeControl from './components/VolumeControl.js';
+import Slider from './components/Slider.js';
 import { lightColor } from './assets/constants';
 import { getAudioOptions } from './functions'
 

@@ -1,6 +1,4 @@
 src
-demo
 .babelrc
-webpack.config.js
+webpack.*
 *.tgz
-*.lock

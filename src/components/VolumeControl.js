@@ -1,6 +1,6 @@
 import React from 'react';
 import { volume0SVG, volume1SVG, volume2SVG, volumeXSVG } from '../assets/svg'
-import Slider from './Slider.jsx';
+import Slider from './Slider.js';
 
 class VolumeControl extends React.Component {
     constructor(props) {
